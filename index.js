@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken')
 
 const db = require('./dbConnectExec.js');
 const config = require('./config.js')
+const auth = require(("./middleware/authenticate"))
 
 const { response } = require('express');
 const dbConnectExec = require('./dbConnectExec.js');
@@ -11,6 +12,39 @@ const dbConnectExec = require('./dbConnectExec.js');
 const app = express();
 
 app.use(express.json())
+
+app.post("/reviews", auth, async (req,res)=>{
+
+    try{
+    var movieFK = req.body.movieFK
+    var summary = req.body.summary;
+    var rating = req.body.rating;
+
+    if(!movieFK || !summary || !rating){res.status(400).send("bad request")}
+
+    summary = summary.replace("'","''")
+
+    // console.log("here is the contact in /reviews", req.contact)
+    // res.send("here is your response")
+
+    let insertQuery = `INSERT INTO Review(Summary, Rating, MovieFK, ContactFK)
+    OUTPUT inserted.ReviewPK, inserted.Summary, inserted.Rating, inserted.MovieFK
+    VALUES('${summary}', '${rating}', '${movieFK}', ${req.contact.ContacktPK})`
+
+    let insertedReview = await db.executeQuery(insertQuery)
+// console.log(insertedReview)
+    res.status(201).send(insertedReview[0])
+}
+
+    catch(error){
+        console.log("error in POST /review", error)
+        res.status(500).send()
+    }
+})
+
+app.get('/contacts/me', auth, (req,res)=>{
+    res.send(req.contact)
+})
 
 //http://localhost:5000/hi
 app.get("/hi", (req,res)=>{
@@ -74,7 +108,7 @@ res.status(200).send({
     user: {
         NameFirst: user.NameFirst,
         NameLast: user.NameLast,
-        Email: user.email,
+        Email: user.Email,
         ContactPK: user.ContactPK
     }
 })
